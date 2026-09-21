@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""Дневной AI-дайджест из RSS: сбор → чистка (GitHub Models или ключевые слова) → docs/YYYY-MM-DD.html.
+"""Дневной список ИИ-новостей для NotebookLM: RSS → отбор → docs/YYYY-MM-DD.html (заголовок + ссылка).
+
+Берём только ссылки с сайтов, которые NotebookLM читает сам (READABLE); ссылки добавляются в блокнот вручную.
 
 Только stdlib. Модели (по очереди): GitHub Copilot CLI на встроенном токене Actions → Gemini (GEMINI_API_KEY)
 → OpenRouter free (OPENROUTER_API_KEY) → ключевые слова.
@@ -31,8 +33,20 @@ PROVIDERS = [
     ("OpenRouter", "https://openrouter.ai/api/v1/chat/completions",
      "OPENROUTER_API_KEY", "nvidia/nemotron-3-super-120b-a12b:free", {}),
 ]
-MIN_KEPT = 10  # модель, оставившая меньше, считается сбойной
+MIN_KEPT = 5  # модель, оставившая меньше, считается сбойной
 MAX_LLM_ITEMS = 160
+MAX_STORIES = 20
+# Домены, которые NotebookLM реально читает по URL (проверено импортом 2026-09-21)
+READABLE = {
+    "techcrunch.com", "x.ai", "macstories.net", "arstechnica.com", "the-decoder.com", "engadget.com",
+    "zdnet.com", "siliconangle.com", "marktechpost.com", "huggingface.co", "blog.google", "deepmind.google",
+    "simonwillison.net", "404media.co", "bbc.co.uk", "bbc.com", "geekwire.com",
+}
+
+
+def readable(url):
+    host = re.sub(r"^https?://(www\.)?", "", url).split("/")[0].lower()
+    return any(host == d or host.endswith("." + d) for d in READABLE)
 
 KEYWORDS = re.compile(
     r"\b(AI|A\.I\.|artificial intelligence|machine learning|LLMs?|GPT[-\w.]*|ChatGPT|OpenAI|Anthropic|Claude|"
@@ -93,14 +107,18 @@ def parse_feed(data, source):
                     link = c.get("href", "")
                     break
         date = parse_date(child_text(el, "pubDate", "published", "updated", "date"))
-        summary = strip_tags(child_text(el, "description", "summary", "content"))
+        raw_desc = child_text(el, "description", "summary", "content")
+        summary = strip_tags(raw_desc)
+        if "techmeme.com" in link:  # у Techmeme ведём на оригинал статьи
+            orig = [u for u in re.findall(r'href="(https?://[^"]+)"', raw_desc, re.I) if "techmeme.com" not in u]
+            link = orig[0].split("?")[0] if orig else link
         via = source
         if "news.google.com" in link:  # у Google News в заголовке « - Издание»
             m = re.match(r"(.*) - ([^-]+)$", title)
             if m:
                 title, via = m.group(1).strip(), f"{source} ({m.group(2).strip()})"
             summary = ""
-        if title and link:
+        if title and link and readable(link):
             items.append({"title": title, "link": link, "date": date, "source": via, "summary": summary[:400]})
     return items
 
@@ -169,12 +187,12 @@ def llm_clean(items):
     items = items[:MAX_LLM_ITEMS]
     listing = "\n".join(f"{n}. [{i['source']}] {i['title']}" for n, i in enumerate(items))
     prompt = (
-        "Ниже заголовки техно-новостей за сутки. Задача:\n"
-        "1) Оставь только новости про ИИ (модели, компании ИИ, чипы и дата-центры для ИИ, регулирование ИИ, "
-        "применение ИИ). Выкинь рекламу, распродажи, обзоры гаджетов без ИИ, подкасты, дайджесты-сборники.\n"
-        "2) Если одна история встречается несколько раз — оставь один номер (самый информативный заголовок).\n"
-        "3) Разложи по 4-7 рубрикам с короткими русскими названиями, внутри рубрики — по важности.\n"
-        'Ответ строго JSON: {"sections":[{"name":"...","ids":[0,5]}]}\n\n' + listing
+        "Ниже заголовки техно-новостей за сутки. Выбери до " + str(MAX_STORIES) + " главных новостей про ИИ "
+        "(модели и их релизы, компании ИИ, чипы и дата-центры для ИИ, регулирование и безопасность ИИ, "
+        "заметные применения ИИ). Выкинь рекламу, распродажи, анонсы конференций, обзоры гаджетов без ИИ, "
+        "подкасты, дайджесты-сборники, короткие цитаты. Одна история — один номер (самая содержательная статья). "
+        "Упорядочь по важности.\n"
+        'Ответ строго JSON: {"sections":[{"name":"Главное","ids":[3,0,7]}]}\n\n' + listing
     )
     errors = []
     chain = [("Copilot", None, "GITHUB_TOKEN", "copilot (auto)", None)] if shutil.which("copilot") else []
@@ -210,36 +228,34 @@ def llm_clean(items):
 def keyword_clean(items):
     kept = [i for i in items if KEYWORDS.search(i["title"] + " " + i["summary"])]
     print(f"[keywords] {len(items)} -> {len(kept)}", flush=True)
-    return [("Новости ИИ", kept)]
+    return [("Новости ИИ", kept[:MAX_STORIES])]
 
 
 def render(day, sections, method):
-    total = sum(len(v) for _, v in sections)
-    parts = [
-        "<!doctype html><html lang=\"ru\"><head><meta charset=\"utf-8\">",
-        f"<title>AI-дайджест {day}</title>",
-        "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">",
-        "<style>body{font:16px/1.5 system-ui,sans-serif;max-width:820px;margin:2em auto;padding:0 16px;color:#222}"
-        "h2{margin-top:1.8em;border-bottom:1px solid #ddd}li{margin:.6em 0}.m{color:#777;font-size:.85em}"
-        "@media(prefers-color-scheme:dark){body{background:#111;color:#ddd}a{color:#8ab4f8}h2{border-color:#333}}</style>",
-        "</head><body>",
-        f"<h1>AI-дайджест за {day}</h1>",
-        f"<p class=\"m\">{total} новостей за последние {WINDOW_HOURS} ч. Отбор: {method}.</p>",
-    ]
-    for name, items in sections:
-        parts.append(f"<h2>{html.escape(name)}</h2><ol>")
-        for i in items:
-            t = i["date"].astimezone(MSK).strftime("%d.%m %H:%M")
-            parts.append(
-                f"<li><a href=\"{html.escape(i['link'])}\">{html.escape(i['title'])}</a>"
-                f"<br><span class=\"m\">{html.escape(i['source'])} · {t} МСК</span>"
-            )
-            if i["summary"]:
-                parts.append(f"<br>{html.escape(i['summary'][:300])}")
-            parts.append("</li>")
-        parts.append("</ol>")
-    parts.append("</body></html>")
-    return "\n".join(parts)
+    items = [i for _, group in sections for i in group][:MAX_STORIES]
+    rows = "\n".join(
+        f"<li><a href=\"{html.escape(i['link'])}\">{html.escape(i['title'])}</a> "
+        f"<span class=\"m\">— {html.escape(i['source'])}</span></li>"
+        for i in items
+    )
+    urls = "\n".join(i["link"] for i in items)
+    return f"""<!doctype html><html lang="ru"><head><meta charset="utf-8">
+<title>ИИ-новости {day}</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>body{{font:16px/1.5 system-ui,sans-serif;max-width:820px;margin:2em auto;padding:0 16px;color:#222;background:#fff}}
+li{{margin:.5em 0}}.m{{color:#777;font-size:.85em}}textarea{{width:100%;height:14em;font:13px monospace;box-sizing:border-box}}
+@media(prefers-color-scheme:dark){{body{{background:#111;color:#ddd}}a{{color:#8ab4f8}}textarea{{background:#1a1a1a;color:#ddd}}}}</style>
+</head><body>
+<h1>ИИ-новости за {day}</h1>
+<p class="m">{len(items)} историй за {WINDOW_HOURS} ч, только сайты, которые NotebookLM читает по ссылке. Отбор: {method}.</p>
+<ol>
+{rows}
+</ol>
+<h2>Ссылки для блокнота</h2>
+<p class="m">Скопировать целиком → NotebookLM → Добавить источник → Веб-сайты.</p>
+<textarea readonly onclick="this.select()">{html.escape(urls)}</textarea>
+</body></html>
+"""
 
 
 def write_index():

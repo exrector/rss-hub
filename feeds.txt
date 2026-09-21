@@ -1,9 +1,18 @@
 # name | url   (строки с # игнорируются)
+# Только сайты, которые NotebookLM читает по ссылке (проверено 2026-09-21, см. READABLE в digest.py).
+# НЕ читает: theverge, wired, axios, openai.com, reuters, bloomberg, technologyreview, nytimes, cnbc, wsj, Google News.
 Techmeme | https://www.techmeme.com/feed.xml
 TechCrunch AI | https://techcrunch.com/category/artificial-intelligence/feed/
-Bloomberg Tech | https://feeds.bloomberg.com/technology/news.rss
-The Verge AI | https://www.theverge.com/rss/ai-artificial-intelligence/index.xml
-WIRED AI | https://www.wired.com/feed/tag/ai/latest/rss
-VentureBeat AI | https://news.google.com/rss/search?q=site:venturebeat.com+when:1d&hl=en-US&gl=US&ceid=US:en
-WSJ Tech | https://news.google.com/rss/search?q=site:wsj.com+(AI+OR+%22artificial+intelligence%22+OR+OpenAI+OR+Nvidia)+when:1d&hl=en-US&gl=US&ceid=US:en
-smol.ai AI News | https://news.smol.ai/rss.xml
+Ars Technica AI | https://arstechnica.com/ai/feed/
+The Decoder | https://the-decoder.com/feed/
+ZDNet AI | https://www.zdnet.com/topic/artificial-intelligence/rss.xml
+Engadget | https://www.engadget.com/rss.xml
+SiliconANGLE AI | https://siliconangle.com/category/ai/feed/
+MarkTechPost | https://www.marktechpost.com/feed/
+GeekWire | https://www.geekwire.com/feed/
+BBC Tech | https://feeds.bbci.co.uk/news/technology/rss.xml
+404 Media | https://www.404media.co/rss/
+Google AI blog | https://blog.google/technology/ai/rss/
+DeepMind blog | https://deepmind.google/blog/rss.xml
+Hugging Face blog | https://huggingface.co/blog/feed.xml
+Simon Willison | https://simonwillison.net/atom/everything/
