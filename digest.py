@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
 """Дневной AI-дайджест из RSS: сбор → чистка (GitHub Models или ключевые слова) → docs/YYYY-MM-DD.html.
 
-Только stdlib. Модели (по очереди): Gemini (GEMINI_API_KEY) → OpenRouter free (OPENROUTER_API_KEY) → ключевые слова.
+Только stdlib. Модели (по очереди): GitHub Copilot CLI на встроенном токене Actions → Gemini (GEMINI_API_KEY)
+→ OpenRouter free (OPENROUTER_API_KEY) → ключевые слова.
 GitHub Models не используем — сервис выводят из эксплуатации (сентябрь 2026).
 """
 import html
 import json
 import os
 import re
+import shutil
+import subprocess
 import sys
 import urllib.request
 import xml.etree.ElementTree as ET
@@ -153,6 +156,15 @@ def ask_model(url, key, model, prompt, extra):
     return json.loads(m.group(0) if m else text)
 
 
+def ask_copilot(prompt):
+    # В Actions авторизуется встроенным GITHUB_TOKEN (нужно permissions: copilot-requests: write)
+    r = subprocess.run(["copilot", "-p", prompt, "-s"], capture_output=True, text=True, timeout=300)
+    if r.returncode:
+        raise RuntimeError(f"copilot exit {r.returncode}: {r.stderr.strip()[:300]}")
+    m = re.search(r"\{.*\}", r.stdout, re.S)
+    return json.loads(m.group(0) if m else r.stdout)
+
+
 def llm_clean(items):
     items = items[:MAX_LLM_ITEMS]
     listing = "\n".join(f"{n}. [{i['source']}] {i['title']}" for n, i in enumerate(items))
@@ -165,13 +177,14 @@ def llm_clean(items):
         'Ответ строго JSON: {"sections":[{"name":"...","ids":[0,5]}]}\n\n' + listing
     )
     errors = []
-    for name, url, env, model, extra in PROVIDERS:
+    chain = [("Copilot", None, "GITHUB_TOKEN", "copilot (auto)", None)] if shutil.which("copilot") else []
+    for name, url, env, model, extra in chain + PROVIDERS:
         key = os.environ.get(env)
         if not key:
             errors.append(f"{name}: нет {env}")
             continue
         try:
-            data = ask_model(url, key, model, prompt, extra)
+            data = ask_copilot(prompt) if url is None else ask_model(url, key, model, prompt, extra)
         except Exception as e:  # noqa: BLE001 — пробуем следующего провайдера
             detail = e.read().decode()[:300] if hasattr(e, "read") else ""
             errors.append(f"{name}: {type(e).__name__}: {e} {detail}")
