@@ -1,0 +1,9 @@
+# name | url   (строки с # игнорируются)
+Techmeme | https://www.techmeme.com/feed.xml
+TechCrunch AI | https://techcrunch.com/category/artificial-intelligence/feed/
+Bloomberg Tech | https://feeds.bloomberg.com/technology/news.rss
+The Verge AI | https://www.theverge.com/rss/ai-artificial-intelligence/index.xml
+WIRED AI | https://www.wired.com/feed/tag/ai/latest/rss
+VentureBeat AI | https://news.google.com/rss/search?q=site:venturebeat.com+when:1d&hl=en-US&gl=US&ceid=US:en
+WSJ Tech | https://news.google.com/rss/search?q=site:wsj.com+(AI+OR+%22artificial+intelligence%22+OR+OpenAI+OR+Nvidia)+when:1d&hl=en-US&gl=US&ceid=US:en
+smol.ai AI News | https://news.smol.ai/rss.xml

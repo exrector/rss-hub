@@ -1,0 +1,23 @@
+# rss-hub — дневной AI-дайджест для NotebookLM
+
+Раз в сутки (06:00 МСК) GitHub Actions собирает RSS из `feeds.txt`, берёт новости за 26 часов,
+убирает дубли, отдаёт заголовки модели на чистку и рубрикацию и публикует страницу на GitHub Pages.
+
+- Выпуск за день: `https://exrector.github.io/rss-hub/YYYY-MM-DD.html` — **эту ссылку давать NotebookLM**
+  (корень/latest у NotebookLM кэшируется как вчерашний контент).
+- Последний: `latest.html`, архив: `index.html`.
+
+## Чистка
+Цепочка провайдеров (`PROVIDERS` в `digest.py`), все бесплатные:
+1. Gemini `gemini-2.5-flash` (секрет `GEMINI_API_KEY`, thinking выключен — иначе JSON обрезается).
+2. OpenRouter `nvidia/nemotron-3-super-120b-a12b:free` (секрет `OPENROUTER_API_KEY`).
+3. Фильтр по ключевым словам.
+
+Ответ модели, оставивший < 10 новостей, считается браком и уходит к следующему провайдеру.
+GitHub Models не используется — в сентябре 2026 его выводят из эксплуатации (brownout, HTTP 410).
+
+## Источники
+`feeds.txt`: `Имя | URL`. VentureBeat (429 на прямой RSS) и WSJ (RSS заброшен в 2025) идут через Google News —
+ссылки у них через редирект Google. Verge и WIRED отдают RSS напрямую при браузерном User-Agent.
+
+Локальный запуск: `GEMINI_API_KEY=... python3 digest.py` (только stdlib).
