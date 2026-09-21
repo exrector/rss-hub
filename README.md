@@ -1,4 +1,4 @@
-# rss-hub — дневной AI-дайджест для NotebookLM
+# rss-hub — дневной список ИИ-новостей для NotebookLM
 
 Раз в сутки (06:00 МСК) GitHub Actions собирает RSS из `feeds.txt`, берёт новости за 26 часов,
 убирает дубли, отдаёт заголовки модели на чистку и рубрикацию и публикует страницу на GitHub Pages.
@@ -18,8 +18,17 @@
 Ответ модели, оставивший < 10 новостей, считается браком и уходит к следующему провайдеру.
 GitHub Models не используется — в сентябре 2026 его выводят из эксплуатации (brownout, HTTP 410).
 
+## Формат
+Страница — до 20 главных историй: «заголовок — ссылка на оригинал», без описаний. Внизу — поле со всеми URL:
+скопировать и вставить в NotebookLM → Добавить источник → Веб-сайты. Каждая статья становится отдельным источником.
+
 ## Источники
-`feeds.txt`: `Имя | URL`. VentureBeat (429 на прямой RSS) и WSJ (RSS заброшен в 2025) идут через Google News —
-ссылки у них через редирект Google. Verge и WIRED отдают RSS напрямую при браузерном User-Agent.
+Только сайты, которые NotebookLM читает по ссылке сам (`READABLE` в `digest.py`, проверено импортом 2026-09-21):
+techcrunch, x.ai, macstories, arstechnica, the-decoder, engadget, zdnet, siliconangle, marktechpost,
+huggingface, blog.google, deepmind, simonwillison, 404media, bbc, geekwire. У Techmeme берётся ссылка на оригинал,
+если он из этого списка.
+
+Не читает (0 символов после импорта): theverge, wired, axios, openai.com, reuters, bloomberg, technologyreview,
+nytimes, cnbc, wsj; ссылки Google News — редиректы. Новый сайт добавлять только после проверки импортом.
 
 Локальный запуск: `GEMINI_API_KEY=... python3 digest.py` (только stdlib).
