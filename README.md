@@ -8,7 +8,9 @@
 - Последний: `latest.html`, архив: `index.html`.
 
 ## Чистка
-Цепочка провайдеров (`PROVIDERS` в `digest.py`), все бесплатные:
+Цепочка провайдеров, все бесплатные:
+0. **GitHub Copilot CLI** прямо в Actions на встроенном `GITHUB_TOKEN` (`permissions: copilot-requests: write`),
+   без ключей. Тариф Copilot Free — 200 ед. чата в месяц; один прогон ≈ 0.6 ед. (≈18 ед./мес).
 1. Gemini `gemini-2.5-flash` (секрет `GEMINI_API_KEY`, thinking выключен — иначе JSON обрезается).
 2. OpenRouter `nvidia/nemotron-3-super-120b-a12b:free` (секрет `OPENROUTER_API_KEY`).
 3. Фильтр по ключевым словам.
