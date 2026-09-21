@@ -1,0 +1,17 @@
+name: copilot probe
+on: workflow_dispatch
+permissions:
+  contents: read
+  copilot-requests: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - run: npm install -g @github/copilot
+      - run: copilot --version; copilot --help | grep -iA3 model || true
+      - run: copilot -p 'Reply with exactly: {"ok":true}' -s --no-color || echo "EXIT=$?"
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+      - run: copilot -p 'Reply with exactly: {"ok":true}' -s --model gpt-5-mini || echo "EXIT=$?"
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
